@@ -8,7 +8,6 @@ env/
 .venv/
 env*
 dist/
-build/
 *.egg
 *.egg-info/
 _mailinglist
