@@ -1,5 +1,4 @@
-import re
-from flask import Flask, send_from_directory, flash, request, session
+from flask import Flask, send_from_directory, request, session, flash
 from flask_restful import Api, Resource, reqparse
 from flask_cors import CORS #comment this on deployment
 from api.HelloApiHandler import HelloApiHandler
@@ -12,18 +11,16 @@ from faunadb.errors import BadRequest, NotFound
 from dotenv import load_dotenv
 import os, secrets
 
-app = Flask(__name__, static_url_path='', static_folder='frontend/build')
 
 APP_ROOT = os.path.join(os.path.dirname(__file__), '..')   # refers to application_top
 dotenv_path = os.path.join(APP_ROOT, '.env')
 load_dotenv(dotenv_path)
 
+app = Flask(__name__, static_url_path='', static_folder='frontend/build')
 
+app.secret_key = os.environ.get('APP_SECRET')
 app.config['APP_SECRET']=os.environ.get('APP_SECRET')
-client = FaunaClient(secret=os.environ.get('FAUNA_DB_KEY'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
+client = FaunaClient(secret=os.environ.get('FAUNA_DB_KEY'), domain="db.us.fauna.com")
 
 CORS(app) #comment this on deployment
 api = Api(app)
@@ -34,7 +31,7 @@ def serve(path):
 
 # app.add_resource(UserApiHandler, '/api/v1/user')
 
-@app.route("/api/v1/user/signin", methods=["POST", "GET"])
+@app.route("/api/v1/user/signin", methods=["GET", "POST"])
 def signin():
       if session.get('user_id'):
               flash('You are logged in!', 'warning')
@@ -81,7 +78,7 @@ def signin():
             "message": "GET /signin is not implemented yet. What should it do?"
           }
 
-@app.route("/api/v1/user/signup", methods=["POST", "GET"])
+@app.route("/api/v1/user/signup", methods=["GET", "POST"])
 def signup():
       if session.get('user_id'):
               flash('You are logged in!', 'warning')
@@ -138,7 +135,7 @@ def signup():
           "message": "Please only POST to /user/signup"
         }
 
-@app.route("/api/v1/user/signout", methods=["POST"])
+@app.route("/api/v1/user/signout", methods=["GET", "POST"])
 def signout():
     if not session.get('user_id'):
         flash('You need to be logged in to do this!', 'warning')
@@ -162,5 +159,5 @@ def signout():
 
 api.add_resource(HelloApiHandler, '/flask/hello')
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
