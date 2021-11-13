@@ -12,9 +12,9 @@ from dotenv import load_dotenv
 import os, secrets
 
 
-APP_ROOT = os.path.join(os.path.dirname(__file__), '..')   # refers to application_top
-dotenv_path = os.path.join(APP_ROOT, '.env')
-load_dotenv(dotenv_path)
+# APP_ROOT = os.path.join(os.path.dirname(__file__), '..')   # refers to application_top
+# dotenv_path = os.path.join(APP_ROOT, '.env')
+# load_dotenv(dotenv_path)
 
 app = Flask(__name__, static_url_path='', static_folder='frontend/build')
 
