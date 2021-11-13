@@ -21,3 +21,10 @@ Features such as:
 - Scoreboard / Highscores list
 - Minimal user information, such as optional `username` field, no passwords
 ...
+
+
+
+### FaunaDB
+
+I used this to help me understand FaunaDB:
+https://dev.to/bkoiki950/building-a-user-login-system-with-flask-and-faunadb-42pk
