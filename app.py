@@ -1,15 +1,19 @@
-from flask import Flask, send_from_directory, request, session, flash
+from flask import Flask, send_from_directory, request, session, flash, jsonify, make_response
 from flask_restful import Api, Resource, reqparse
 from flask_cors import CORS #comment this on deployment
 from api.HelloApiHandler import HelloApiHandler
 # from api.UserApiHandler import UserApiHandler
 from werkzeug.security import generate_password_hash, check_password_hash
-from faunadb import query as q
+# from flask_jwt import JWT, jwt_required, current_identity
+import jwt
+from faunadb import query
 from faunadb.client import FaunaClient
 from faunadb.objects import Ref
 from faunadb.errors import BadRequest, NotFound
 from dotenv import load_dotenv
 import os, secrets
+from functools import wraps
+import datetime
 
 
 # APP_ROOT = os.path.join(os.path.dirname(__file__), '..')   # refers to application_top
@@ -44,9 +48,17 @@ def signin():
           username = request.form['username']
           password = request.form['password']
           # verify if the user details exist
+
+          # auth = request.authorization
+
+          # if not auth or not auth.username or not auth.password:
+          #   return make_response('could not verify', 401, {'Authentication': 'login required', "ok": False})
+
+          flash("received auth")
+
           try:
               user = client.query(
-                      q.get(q.match(q.index('user_by_username'), username))
+                      query.get(query.match(query.index('user_by_username'), username))
               )
           except NotFound:
               flash('Invalid username or password', category='warning')
@@ -56,14 +68,17 @@ def signin():
               }
           else:
               if check_password_hash(user['data']['password'], password):
-                  session['user_id'] = user['ref'].id()
+                  user_public_id = user['ref'].id()
+                  session['user_id'] = user_public_id
+                  token = jwt.encode({'public_id' : user_public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=45)}, app.config['APP_SECRET'], "HS256")
                   flash('Signed in successfully', 'success')
                   return {
                     "ok": True,
                     "message": "You have signed in successfully!",
                     "data": {
-                      "user_id": session['user_id']
-                    }
+                      "user_id": session['user_id'],
+                    },
+                    "token": token
                   }
               else:
                   flash('Invalid usernasme or password', 'warning')
@@ -112,8 +127,8 @@ def signup():
           user = {'username': username, 'password': password_hash}
           try:
               # store user data to db
-              new_user = client.query(q.create(
-                  q.collection('users'),
+              new_user = client.query(query.create(
+                  query.collection('users'),
                   {'data': user}
               ))
           except BadRequest:
@@ -150,6 +165,63 @@ def signout():
           "ok": True,
           "message": "You have logged out successfully!"
         }
+
+def token_required(f):
+  @wraps(f)
+  def decorator(*args, **kwargs):
+    token = None
+    if 'x-access-tokens' in request.headers:
+        token = request.headers['x-access-tokens']
+
+    if not token:
+      return jsonify({"pk": False, 'message': 'a valid token is missing'})
+    
+    try:
+      data = jwt.decode(token, app.config['APP_SECRET'], algorithms=["HS256"])
+      # query for the current user using the public_id of the user
+      flash("got data: ", data)
+      current_user = client.query(
+                query.get(query.match(query.index('user_by_id'), data['public_id']))
+        )
+      if current_user:
+        flash('got the user!')
+        return jsonify({ "ok": True, "message": "Got the user! "})
+    except:
+      return jsonify({"ok": False, 'message': 'token is invalid'})
+
+    return f(current_user, *args, **kwargs)
+  return decorator
+
+@app.route("/api/v1/test-protected", methods=["GET", "POST"])
+# this decorator serves to enforce having the jwt
+@token_required
+def get_protected(current_user):
+  if not session.get('user_id'):
+    flash("You need to be logged in. Missing 'user_id' from session")
+    return {
+      "ok": False,
+      "message": "You need to be logged in. Missing 'user_id' from session"
+    }
+
+  # use the JWT for additional auth
+  flash("you have authed past the session storage. now testing the JWT...")
+
+  if not current_user.id:
+    flash("you don't have the user id")
+    return {
+      "ok": False,
+      "message": "JWT id not found"
+    }
+
+  flash("made it through. returning now")
+
+  return {
+    "ok": True,
+    "message": "Congrats, you have authenticated with JWT",
+    "user_id": current_user.id
+  }
+
+  
 
 # app.add_url_rule('/api/todos', methods=['GET'], view_func=get_all_todos)
 # app.add_url_rule('/api/todos', methods=['POST'], view_func=create_todo)
