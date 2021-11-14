@@ -47,9 +47,13 @@ def signin():
           # get the user details
           username = request.form['username']
           password = request.form['password']
+
+
+          if not username or not password:
+              return jsonify({ "ok": False, "message": "Error: Missing required fields username and/or password to sign in"})
           # verify if the user details exist
 
-          # auth = request.authorization
+          # auth = request.form # request.authorization
 
           # if not auth or not auth.username or not auth.password:
           #   return make_response('could not verify', 401, {'Authentication': 'login required', "ok": False})
@@ -68,18 +72,21 @@ def signin():
               }
           else:
               if check_password_hash(user['data']['password'], password):
+                  print("checked pw hash")
                   user_public_id = user['ref'].id()
                   session['user_id'] = user_public_id
-                  token = jwt.encode({'public_id' : user_public_id, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=45)}, app.config['APP_SECRET'], "HS256")
+                  exp_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=45)
+                  # exp_date.
+                  token = jwt.encode({'public_id': user_public_id, 'exp': exp_date}, app.config['APP_SECRET'], "HS256")
                   flash('Signed in successfully', 'success')
-                  return {
+                  return jsonify({
                     "ok": True,
                     "message": "You have signed in successfully!",
                     "data": {
                       "user_id": session['user_id'],
                     },
-                    "token": token
-                  }
+                    "token": token.decode('UTF-8')
+                  })
               else:
                   flash('Invalid usernasme or password', 'warning')
                   return {
