@@ -35,14 +35,77 @@ def serve(path):
 
 # app.add_resource(UserApiHandler, '/api/v1/user')
 
+@app.route("/api/v1/scoreboard", methods=["GET", "POST"])
+def highscore():
+  if request.method == "GET":
+    # Get Top 10 high scores in high scores collection
+    try:
+      # highscores = client.query(
+      #   query.get(query.ref(query.collection("highscores"), "1"))
+      # )
+      highscores = client.query(query.map(
+        query.paginate(query.documents(query.collection('highscores'))),
+        query.lambda(x => query.get(x))
+      ))
+      print(highscores)
+
+      return jsonify({ "ok": True, "message": "Here are the highscores", "data": highscores})
+    except:
+      return jsonify({ "ok": False, "message": "Error: Could not GET the highscores"})
+
+  if not session.get('user_id'):
+    flash('You are not logged in!', 'warning')
+    return {
+      "ok": False,
+      "message": "You are not logged in."
+    }
+
+  
+
+  if request.method == "POST":
+    # Validate Data (if time, check against fraud)
+    score = request.form["score"]
+    username = request.form["username"]
+
+    if not score:
+      return jsonify({ "ok": False, "message": "Error: Missing required field: score."})
+    if not username:
+      return jsonify({ "ok": False, "message": "Error: Missing required field: username."})
+
+    if not int(score) or int(score) < 0 or int(score) > 1000:
+      return jsonify({ "ok": False, "message": "Error: You have sent an invalid score. Sus."})
+
+    # if username does not exist in DB, return error
+    try:
+      user = client.query(
+        query.get(query.match(query.index('user_by_username'), username))
+      )
+    except NotFound:
+      return {
+        "ok": False,
+        "message": "Error: User with this username was not found."
+      }
+
+    # Add score to high scores in DB
+    result = client.query(
+      query.create(
+        query.collection("highscores"),
+        {"data": {"score": int(score), "username": username}}
+      )
+    )
+    print(result)
+
+    return jsonify({ "ok": True, "message": "Saved your score successfully!" })
+
+
 @app.route("/api/v1/user/signin", methods=["GET", "POST"])
 def signin():
       if session.get('user_id'):
-              flash('You are logged in!', 'warning')
-              return {
-                "ok": True,
-                "message": "You are logged in already."
-              }
+        flash('You are logged in!', 'warning')
+        return {
+          "ok": True,
+          "message": "You are logged in already."
+        }
       if request.method =='POST':
           # get the user details
           username = request.form['username']
