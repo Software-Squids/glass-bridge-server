@@ -41,16 +41,38 @@ def highscore():
     # Get Top 10 high scores in high scores collection
     try:
       # highscores = client.query(
-      #   query.get(query.ref(query.collection("highscores"), "1"))
+      #   query.get(query.ref(query.collection("highscores")))
       # )
-      highscores = client.query(query.map(
-        query.paginate(query.documents(query.collection('highscores'))),
-        query.lambda(x => query.get(x))
-      ))
+      # highscores = client.query(query.map(
+      #   query.paginate(query.documents(query.collection('highscores'))),
+      #   query.lambda(x => query.get(x))
+      # ))
+      # highscores = client.query(
+      #   query.map_(
+      #     query.lambda_("highscores", query.get(query.var("data"))),
+      #     query.paginate(query.match(query.index('top_highscores'))),
+      #   )
+      # )
+      # highscores = client.query(q.get(q.ref(q.collection(collection)
+      # Get all highscores from collection
+      # highscores = client.query(
+      #   query.map_(
+      #     query.paginate(query.collection('highscores')),
+      #     query.lambda_("data", x => query.get(x))
+      #   )
+      # )
+      # highscores = client.query(
+      #   query.get(query.match(query.index("top_highscores"), ))
+      # )
+      highscores = client.query(
+        query.paginate(query.match(query.index("top_highscores")))
+      )
       print(highscores)
+      print(highscores["data"])
 
-      return jsonify({ "ok": True, "message": "Here are the highscores", "data": highscores})
-    except:
+      return jsonify({ "ok": True, "message": "Here are the highscores", "data": highscores["data"]})
+    except Exception as e:
+      print(e)
       return jsonify({ "ok": False, "message": "Error: Could not GET the highscores"})
 
   if not session.get('user_id'):
@@ -127,6 +149,8 @@ def signin():
               user = client.query(
                       query.get(query.match(query.index('user_by_username'), username))
               )
+              # if not user:
+
           except NotFound:
               flash('Invalid username or password', category='warning')
               return {
