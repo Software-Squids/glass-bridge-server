@@ -168,9 +168,9 @@ def signin():
                     "ok": True,
                     "message": "You have signed in successfully!",
                     "data": {
-                      "user_id": str(user_public_id),
+                      "user_id": str(user_public_id, encoding="utf-8"),
                     },
-                    "access_token": str(token)
+                    "access_token": str(token, encoding="utf-8")
                   })
                   # res.set_cookie("access_token", token)
               else:
@@ -244,7 +244,7 @@ def signup():
               return jsonify({
                 "ok": True,
                 "message": "Account created successfully!",
-                "access_token": token
+                "access_token": str(token, encoding="utf-8")
               })
               # res.set_cookie("access_token", token)
 
