@@ -13,14 +13,14 @@ This is a Flask backend to serve the react app for the Glass Bridge Memory Game.
 4. Run the flask app: `flask run` - This should start running the app locally on `localhost:5000`
 
 
-### Future Goals
+### Goals
 
 After deploying the React app to Heroku, I would like to add some more features of a REST api.
+
 Features such as:
 
-- Scoreboard / Highscores list
-- Minimal user information, such as optional `username` field, no passwords
-...
+- [x] Scoreboard / Highscores list
+- [x] Minimal user information, such as optional `username` field, no passwords
 
 
 
