@@ -1,8 +1,8 @@
 {
   "files": {
-    "main.css": "/static/css/main.44c02027.chunk.css",
-    "main.js": "/static/js/main.2638bb70.chunk.js",
-    "main.js.map": "/static/js/main.2638bb70.chunk.js.map",
+    "main.css": "/static/css/main.1bee6548.chunk.css",
+    "main.js": "/static/js/main.a6f229f1.chunk.js",
+    "main.js.map": "/static/js/main.a6f229f1.chunk.js.map",
     "runtime-main.js": "/static/js/runtime-main.33c78037.js",
     "runtime-main.js.map": "/static/js/runtime-main.33c78037.js.map",
     "static/js/2.7e035036.chunk.js": "/static/js/2.7e035036.chunk.js",
@@ -14,7 +14,7 @@
     "index.html": "/index.html",
     "service-worker.js": "/service-worker.js",
     "service-worker.js.map": "/service-worker.js.map",
-    "static/css/main.44c02027.chunk.css.map": "/static/css/main.44c02027.chunk.css.map",
+    "static/css/main.1bee6548.chunk.css.map": "/static/css/main.1bee6548.chunk.css.map",
     "static/js/2.7e035036.chunk.js.LICENSE.txt": "/static/js/2.7e035036.chunk.js.LICENSE.txt",
     "static/js/3.48c1cb5a.chunk.js.LICENSE.txt": "/static/js/3.48c1cb5a.chunk.js.LICENSE.txt",
     "static/media/GameOfSquids-1GMVL.e0727d0b.ttf": "/static/media/GameOfSquids-1GMVL.e0727d0b.ttf",
@@ -23,7 +23,7 @@
   "entrypoints": [
     "static/js/runtime-main.33c78037.js",
     "static/js/2.7e035036.chunk.js",
-    "static/css/main.44c02027.chunk.css",
-    "static/js/main.2638bb70.chunk.js"
+    "static/css/main.1bee6548.chunk.css",
+    "static/js/main.a6f229f1.chunk.js"
   ]
 }
