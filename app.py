@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 import os, secrets
 from functools import wraps
 import datetime
-import flask_praetorian
+# import flask_praetorian
 
 # APP_ROOT = os.path.join(os.path.dirname(__file__), '..')   # refers to application_top
 # dotenv_path = os.path.join(APP_ROOT, '.env')
@@ -22,7 +22,7 @@ import flask_praetorian
 
 app = Flask(__name__, static_url_path='', static_folder='frontend/build')
 
-guard = flask_praetorian.Praetorian()
+# guard = flask_praetorian.Praetorian()
 
 app.secret_key = os.environ.get('APP_SECRET')
 app.config['APP_SECRET']=os.environ.get('APP_SECRET')
@@ -57,14 +57,9 @@ def highscore():
       print(e)
       return jsonify({ "ok": False, "message": "Error: Could not GET the highscores"})
 
-  if not session.get('user_id'):
-    flash('You are not logged in!', 'warning')
-    return {
-      "ok": False,
-      "message": "You are not logged in."
-    }
-
-  
+  if not jwt_verify(request.cookies):
+    flash("User jwt not found. returning", "warning")
+    return jsonify({ "ok": False, "message": "Error: Invalid or missing authentication token" })
 
   if request.method == "POST":
     # Validate Data (if time, check against fraud)
@@ -104,12 +99,12 @@ def highscore():
 
 @app.route("/api/v1/user/signin", methods=["GET", "POST"])
 def signin():
-      if session.get('user_id'):
-        flash('You are logged in!', 'warning')
-        return {
-          "ok": True,
-          "message": "You are logged in already."
-        }
+      # if session.get('user_id'):
+      #   flash('You are logged in!', 'warning')
+      #   return {
+      #     "ok": True,
+      #     "message": "You are logged in already."
+      #   }
       if request.method =='POST':
           # get the user details
           username = request.form['username']
@@ -144,18 +139,24 @@ def signin():
                   print("checked pw hash")
                   user_public_id = user['ref'].id()
                   session['user_id'] = user_public_id
+                  # Will expire in 45 minutes
                   exp_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=45)
                   # exp_date.
                   token = jwt.encode({'public_id': user_public_id, 'exp': exp_date}, app.config['APP_SECRET'], "HS256")
                   flash('Signed in successfully', 'success')
-                  return jsonify({
-                    "ok": True,
-                    "message": "You have signed in successfully!",
-                    "data": {
-                      "user_id": session['user_id'],
-                    },
-                    "token": token.decode('UTF-8')
-                  })
+                  res = make_response(
+                    jsonify({
+                      "ok": True,
+                      "message": "You have signed in successfully!",
+                      "data": {
+                        "user_id": session['user_id'],
+                      },
+                      "access_token": token
+                    }),
+                    200,
+                  )
+                  res.set_cookie("access_token", token)
+                  return res
               else:
                   flash('Invalid usernasme or password', 'warning')
                   return {
@@ -209,17 +210,33 @@ def signup():
               ))
           except BadRequest:
               flash('Username already exists')
-              return {
-                "ok": False,
-                "message": "This username already exists. Please sign in or pick another one."
-              }
+              res = make_response(
+                jsonify({
+                  "ok": False,
+                  "message": "This username already exists. Please sign in or pick another one."
+                }),
+                400
+              )
+              return res
           else:
-              session['user_id'] = new_user['ref'].id()
+              user_public_id = new_user['ref'].id()
+              session['user_id'] = user_public_id
               flash('Account created successfully', 'success')
-              return {
-                "ok": True,
-                "message": "Account created successfully!"
-              }
+
+              # JWT again
+              exp_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=45)
+              token = jwt.encode({'public_id': user_public_id, 'exp': exp_date}, app.config['APP_SECRET'], "HS256")
+              res = make_response(
+                jsonify({
+                  "ok": True,
+                  "message": "Account created successfully!",
+                  "access_token": token
+                }),
+                200
+              )
+              res.set_cookie("access_token", token)
+
+              return res
       elif request.method == 'GET':
         return {
           "ok": False,
@@ -228,42 +245,50 @@ def signup():
 
 @app.route("/api/v1/user/signout", methods=["GET", "POST"])
 def signout():
-    if not session.get('user_id'):
-        flash('You need to be logged in to do this!', 'warning')
-        return {
-          "ok": False,
-          "message": "You are not logged in yet, so you cannot sign out"
-        }
-    else:
-        session.pop('user_id', None)
-        flash('Signed out successfully', 'success')
-        return {
-          "ok": True,
-          "message": "You have logged out successfully!"
-        }
+    # if not session.get('user_id'):
+    #     flash('You need to be logged in to do this!', 'warning')
+    #     return {
+    #       "ok": False,
+    #       "message": "You are not logged in yet, so you cannot sign out"
+    #     }
+    if session.get('user_id'):
+      session.pop('user_id', None)
 
-@app.route('/api/v1/refresh', methods=['POST'])
-def refresh():
-    """
-    Refreshes an existing JWT by creating a new one that is a copy of the old
-    except that it has a refrehsed access expiration.
-    .. example::
-       $ curl http://localhost:5000/api/refresh -X GET \
-         -H "Authorization: Bearer <your_token>"
-    """
-    print("refresh request")
-    old_token = request.get_data()
-    new_token = guard.refresh_jwt_token(old_token)
-    ret = {'access_token': new_token}
-    return ret, 200
+    res = make_response("You have logged out successfully!", 200)
+    res.delete_cookie("access_token")
+    flash('Signed out successfully', 'success')
+    return {
+      "ok": True,
+      "message": "You have logged out successfully!"
+    }
 
-@app.route('/api/protected')
-@flask_praetorian.auth_required
-def protected():
-  return jsonify({
-    "ok": True,
-    "message": "You have been granted access to a secured endpoint in the app"
-  })
+# Will not work
+# @app.route('/api/v1/refresh', methods=['POST'])
+# def refresh():
+#     """
+#     Refreshes an existing JWT by creating a new one that is a copy of the old
+#     except that it has a refrehsed access expiration.
+#     .. example::
+#        $ curl http://localhost:5000/api/refresh -X GET \
+#          -H "Authorization: Bearer <your_token>"
+#     """
+#     print("refresh request")
+#     old_token = request.get_data()
+#     # new_token = guard.refresh_jwt_token(old_token)
+#     ret = {'access_token': new_token}
+#     return ret, 200
+
+
+def jwt_verify(cookies):
+  try:
+    token = cookies.get("access_token")
+    decoded = jwt.decode(token, app.config['APP_SECRET'], algorithms=["HS256"])
+    # DO WHATEVER YOU WANT WITH THE DECODED TOKEN
+    print('dec jwt:', decoded)
+    return True
+  except Exception as e:
+    print("error in jwt_verify: ", e)
+    return False
 
 def token_required(f):
   @wraps(f)
@@ -309,7 +334,7 @@ def get_protected(current_user):
     flash("you don't have the user id")
     return {
       "ok": False,
-      "message": "JWT id not found"
+      "message": "Access token id not found"
     }
 
   flash("made it through. returning now")
