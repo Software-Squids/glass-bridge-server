@@ -72,7 +72,7 @@ def highscore():
       print(e)
       return make_response(jsonify({ "ok": False, "message": "Error: Could not GET the highscores"}), 500)
 
-  if not jwt_verify(request.cookies):
+  if not jwt_verify(request.headers):
     flash("User jwt not found. returning", "warning")
     return make_response(jsonify({ "ok": False, "message": "Error: Invalid or missing authentication token" }), 400)
 
@@ -293,10 +293,10 @@ def signout():
 #     return ret, 200
 
 
-def jwt_verify(cookies):
+def jwt_verify(headers):
   try:
-    token = cookies.get("access_token")
-    print("got token")
+    token = headers.get("access_token")
+    print("got token (from headers):", token)
     decoded = jwt.decode(token, app.config['APP_SECRET'], algorithms=["HS256"])
     # DO WHATEVER YOU WANT WITH THE DECODED TOKEN
     print('dec jwt:', decoded)
@@ -304,6 +304,19 @@ def jwt_verify(cookies):
   except Exception as e:
     print("error in jwt_verify: ", e)
     return False
+
+# def jwt_verify_old(cookies):
+#   try:
+#     print("cookies:", cookies)
+#     token = cookies.get("access_token")
+#     print("got token (from cookies):", token)
+#     decoded = jwt.decode(token, app.config['APP_SECRET'], algorithms=["HS256"])
+#     # DO WHATEVER YOU WANT WITH THE DECODED TOKEN
+#     print('dec jwt:', decoded)
+#     return True
+#   except Exception as e:
+#     print("error in jwt_verify: ", e)
+#     return False
 
 def token_required(f):
   @wraps(f)
