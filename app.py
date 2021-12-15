@@ -168,7 +168,7 @@ def signin():
                     "ok": True,
                     "message": "You have signed in successfully!",
                     "data": {
-                      "user_id": str(user_public_id, encoding="utf-8"),
+                      "user_id": user_public_id,
                     },
                     "access_token": str(token, encoding="utf-8")
                   })
