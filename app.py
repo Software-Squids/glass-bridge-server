@@ -159,22 +159,20 @@ def signin():
                   session['user_id'] = user_public_id
                   # Will expire in 45 minutes
                   exp_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=45)
+                  print("will hash now")
                   # exp_date.
                   token = jwt.encode({'public_id': user_public_id, 'exp': exp_date}, app.config['APP_SECRET'], "HS256")
                   flash('Signed in successfully', 'success')
-                  res = make_response(
-                    jsonify({
-                      "ok": True,
-                      "message": "You have signed in successfully!",
-                      "data": {
-                        "user_id": user_public_id,
-                      },
-                      "access_token": token
-                    }),
-                    200,
-                  )
+                  print("will return jsonify now")
+                  return jsonify({
+                    "ok": True,
+                    "message": "You have signed in successfully!",
+                    "data": {
+                      "user_id": user_public_id,
+                    },
+                    "access_token": token
+                  })
                   # res.set_cookie("access_token", token)
-                  return res
               else:
                   flash('Invalid usernasme or password', 'warning')
                   return make_response(jsonify({
@@ -243,17 +241,13 @@ def signup():
               # JWT again
               exp_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=45)
               token = jwt.encode({'public_id': user_public_id, 'exp': exp_date}, app.config['APP_SECRET'], "HS256")
-              res = make_response(
-                jsonify({
-                  "ok": True,
-                  "message": "Account created successfully!",
-                  "access_token": token
-                }),
-                201
-              )
+              return jsonify({
+                "ok": True,
+                "message": "Account created successfully!",
+                "access_token": token
+              })
               # res.set_cookie("access_token", token)
 
-              return res
       elif request.method == 'GET':
         return make_response(jsonify({
           "ok": False,
