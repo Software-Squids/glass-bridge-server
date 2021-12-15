@@ -46,13 +46,28 @@ def serve(path):
 @app.route("/api/v1/scoreboard", methods=["GET", "POST"])
 def highscore():
   if request.method == "GET":
+
+    # Establish the query to filter scores by (easy, medium, hard)
+    difficulty = request.args.get("difficulty", type=str)
+    if not difficulty or difficulty == None:
+      print("no difficulty submitted.")
+      return make_response(jsonify({"ok": False, "message": "Error: Please query for a specific difficulty"}), 400)
+
+    if difficulty != "easy" and difficulty != "medium" and difficulty != "hard":
+      print("invalid difficulty submitted:", difficulty)
+      return make_response(jsonify({ "ok": False, "message": "Error: Invalid difficulty submitted. Supported options are: easy, medium, or hard" }), 400)
+
     # Get Top 10 high scores in high scores collection
+    # - could use paginate's size option to set to 10, if can filter or sort
     try:
       highscores = client.query(
-        query.paginate(query.match(query.index("top_highscores")))
+        query.paginate(query.match(query.index("highscores_by_difficulty"), difficulty))
       )
+      print("got highscores:", highscores)
 
-      return jsonify({ "ok": True, "message": "Here are the highscores", "data": highscores["data"]})
+      # Sort and filter the highscores here...
+
+      return jsonify({ "ok": True, "message": "Here are the highscores", "data": highscores})
     except Exception as e:
       print(e)
       return make_response(jsonify({ "ok": False, "message": "Error: Could not GET the highscores"}), 500)
@@ -65,14 +80,20 @@ def highscore():
     # Validate Data (if time, check against fraud)
     score = request.form["score"]
     username = request.form["username"]
+    difficulty = request.form["difficulty"]
 
     if not score:
       return make_response(jsonify({ "ok": False, "message": "Error: Missing required field: score."}), 400)
     if not username:
       return make_response(jsonify({ "ok": False, "message": "Error: Missing required field: username."}), 400)
+    if not difficulty:
+      return make_response(jsonify({ "ok": False, "message": "Error: Missing required field: difficulty."}), 400)
 
     if not int(score) or int(score) < 0 or int(score) > 1000:
       return make_response(jsonify({ "ok": False, "message": "Error: You have sent an invalid score. Sus."}), 400)
+
+    if difficulty != "easy" and difficulty != "medium" and difficulty != "hard":
+      return make_response(jsonify({ "ok": False, "message": "Error: Only supported difficulties are: easy, medium, or hard" }), 400)
 
     # if username does not exist in DB, return error
     try:
@@ -88,11 +109,13 @@ def highscore():
         400
       )
 
+    # TODO: First check if the score is in the top 10 for the given difficulty
+
     # Add score to high scores in DB
     result = client.query(
       query.create(
         query.collection("highscores"),
-        {"data": {"score": int(score), "username": username}}
+        {"data": {"score": int(score), "username": username, "difficulty": difficulty}}
       )
     )
     print(result)
