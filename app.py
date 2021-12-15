@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 import os, secrets
 from functools import wraps
 import datetime
-
+import flask_praetorian
 
 # APP_ROOT = os.path.join(os.path.dirname(__file__), '..')   # refers to application_top
 # dotenv_path = os.path.join(APP_ROOT, '.env')
@@ -22,9 +22,17 @@ import datetime
 
 app = Flask(__name__, static_url_path='', static_folder='frontend/build')
 
+guard = flask_praetorian.Praetorian()
+
 app.secret_key = os.environ.get('APP_SECRET')
 app.config['APP_SECRET']=os.environ.get('APP_SECRET')
+app.config['JWT_ACCESS_LIFESPAN'] = {"hours": 24}
+app.config['JWT_REFRESH_LIFESPAN'] = {"days": 30}
+
 client = FaunaClient(secret=os.environ.get('FAUNA_DB_KEY'), domain="db.us.fauna.com")
+
+# Init Praetorian
+# guard.init_app(app)
 
 CORS(app) #comment this on deployment
 api = Api(app)
@@ -233,6 +241,29 @@ def signout():
           "ok": True,
           "message": "You have logged out successfully!"
         }
+
+@app.route('/api/v1/refresh', methods=['POST'])
+def refresh():
+    """
+    Refreshes an existing JWT by creating a new one that is a copy of the old
+    except that it has a refrehsed access expiration.
+    .. example::
+       $ curl http://localhost:5000/api/refresh -X GET \
+         -H "Authorization: Bearer <your_token>"
+    """
+    print("refresh request")
+    old_token = request.get_data()
+    new_token = guard.refresh_jwt_token(old_token)
+    ret = {'access_token': new_token}
+    return ret, 200
+
+@app.route('/api/protected')
+@flask_praetorian.auth_required
+def protected():
+  return jsonify({
+    "ok": True,
+    "message": "You have been granted access to a secured endpoint in the app"
+  })
 
 def token_required(f):
   @wraps(f)
