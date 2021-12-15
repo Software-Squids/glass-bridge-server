@@ -55,11 +55,11 @@ def highscore():
       return jsonify({ "ok": True, "message": "Here are the highscores", "data": highscores["data"]})
     except Exception as e:
       print(e)
-      return jsonify({ "ok": False, "message": "Error: Could not GET the highscores"})
+      return make_response(jsonify({ "ok": False, "message": "Error: Could not GET the highscores"}), 500)
 
   if not jwt_verify(request.cookies):
     flash("User jwt not found. returning", "warning")
-    return jsonify({ "ok": False, "message": "Error: Invalid or missing authentication token" })
+    return make_response(jsonify({ "ok": False, "message": "Error: Invalid or missing authentication token" }), 400)
 
   if request.method == "POST":
     # Validate Data (if time, check against fraud)
@@ -67,12 +67,12 @@ def highscore():
     username = request.form["username"]
 
     if not score:
-      return jsonify({ "ok": False, "message": "Error: Missing required field: score."})
+      return make_response(jsonify({ "ok": False, "message": "Error: Missing required field: score."}), 400)
     if not username:
-      return jsonify({ "ok": False, "message": "Error: Missing required field: username."})
+      return make_response(jsonify({ "ok": False, "message": "Error: Missing required field: username."}), 400)
 
     if not int(score) or int(score) < 0 or int(score) > 1000:
-      return jsonify({ "ok": False, "message": "Error: You have sent an invalid score. Sus."})
+      return make_response(jsonify({ "ok": False, "message": "Error: You have sent an invalid score. Sus."}), 400)
 
     # if username does not exist in DB, return error
     try:
@@ -80,10 +80,13 @@ def highscore():
         query.get(query.match(query.index('user_by_username'), username))
       )
     except NotFound:
-      return {
-        "ok": False,
-        "message": "Error: User with this username was not found."
-      }
+      return make_response(
+        jsonify({
+          "ok": False,
+          "message": "Error: User with this username was not found."
+        }),
+        400
+      )
 
     # Add score to high scores in DB
     result = client.query(
@@ -94,17 +97,11 @@ def highscore():
     )
     print(result)
 
-    return jsonify({ "ok": True, "message": "Saved your score successfully!" })
+    return make_response(jsonify({ "ok": True, "message": "Saved your score successfully!" }), 201)
 
 
 @app.route("/api/v1/user/signin", methods=["GET", "POST"])
 def signin():
-      # if session.get('user_id'):
-      #   flash('You are logged in!', 'warning')
-      #   return {
-      #     "ok": True,
-      #     "message": "You are logged in already."
-      #   }
       if request.method =='POST':
           # get the user details
           username = request.form['username']
@@ -112,28 +109,26 @@ def signin():
 
 
           if not username or not password:
-              return jsonify({ "ok": False, "message": "Error: Missing required fields username and/or password to sign in"})
+              return make_response(jsonify({ "ok": False, "message": "Error: Missing required fields username and/or password to sign in"}), 400)
           # verify if the user details exist
 
-          # auth = request.form # request.authorization
-
-          # if not auth or not auth.username or not auth.password:
-          #   return make_response('could not verify', 401, {'Authentication': 'login required', "ok": False})
-
-          flash("received auth")
+          flash("received auth", "info")
 
           try:
               user = client.query(
-                      query.get(query.match(query.index('user_by_username'), username))
+                query.get(query.match(query.index('user_by_username'), username))
               )
               # if not user:
 
           except NotFound:
               flash('Invalid username or password', category='warning')
-              return {
-                "ok": False,
-                "message": "Invalid username or password. Cannot sign you in."
-              }
+              return make_response(
+                jsonify({
+                  "ok": False,
+                  "message": "Invalid username or password. Cannot sign you in."
+                }),
+                400
+              )
           else:
               if check_password_hash(user['data']['password'], password):
                   print("checked pw hash")
@@ -159,25 +154,25 @@ def signin():
                   return res
               else:
                   flash('Invalid usernasme or password', 'warning')
-                  return {
+                  return make_response(jsonify({
                     "ok": False,
                     "message": "Invalid username or password entered. Cannot sign you in."
-                  }
+                  }), 400)
       if request.method == 'GET':
           flash("User wants to GET signin")
-          return {
+          return make_response(jsonify({
             "ok": False,
             "message": "GET /signin is not implemented yet. What should it do?"
-          }
+          }), 400)
 
 @app.route("/api/v1/user/signup", methods=["GET", "POST"])
 def signup():
-      if session.get('user_id'):
-              flash('You are logged in!', 'warning')
-              return {
-                "ok": True,
-                "message": "You are logged in already."
-              }
+      # if session.get('user_id'):
+      #   flash('You are logged in!', 'warning')
+      #   return {
+      #     "ok": True,
+      #     "message": "You are logged in already."
+      #   }
       if request.method =='POST':
           username = request.form['username']
           # email = request.form['email']
@@ -188,17 +183,17 @@ def signup():
               # return render_template('signup.html')
           if not username or len(username) < 1 or len(username) > 20:
             flash("username is malformatted", "warning")
-            return {
+            return make_response(jsonify({
               "ok": False,
               "message": "Username is not valid. It must be between 1-20 characters in length"
-            }
+            }), 400)
 
           if password != request.form['confirm_password']:
               flash('password fields not equal', 'warning')
-              return {
+              return make_response(jsonify({
                 "ok": False,
                 "message": "Password fields do not match"
-              }
+              }), 400)
           
           password_hash = generate_password_hash(password)
           user = {'username': username, 'password': password_hash}
@@ -210,14 +205,13 @@ def signup():
               ))
           except BadRequest:
               flash('Username already exists')
-              res = make_response(
+              return make_response(
                 jsonify({
                   "ok": False,
                   "message": "This username already exists. Please sign in or pick another one."
                 }),
-                400
+                401
               )
-              return res
           else:
               user_public_id = new_user['ref'].id()
               session['user_id'] = user_public_id
@@ -232,16 +226,16 @@ def signup():
                   "message": "Account created successfully!",
                   "access_token": token
                 }),
-                200
+                201
               )
               res.set_cookie("access_token", token)
 
               return res
       elif request.method == 'GET':
-        return {
+        return make_response(jsonify({
           "ok": False,
           "message": "Please only POST to /user/signup"
-        }
+        }), 400)
 
 @app.route("/api/v1/user/signout", methods=["GET", "POST"])
 def signout():
@@ -254,13 +248,10 @@ def signout():
     if session.get('user_id'):
       session.pop('user_id', None)
 
-    res = make_response("You have logged out successfully!", 200)
+    res = make_response(jsonify({ "ok": True, "message": "You have logged out successfully!"}), 200)
     res.delete_cookie("access_token")
     flash('Signed out successfully', 'success')
-    return {
-      "ok": True,
-      "message": "You have logged out successfully!"
-    }
+    return res
 
 # Will not work
 # @app.route('/api/v1/refresh', methods=['POST'])
@@ -282,6 +273,7 @@ def signout():
 def jwt_verify(cookies):
   try:
     token = cookies.get("access_token")
+    print("got token")
     decoded = jwt.decode(token, app.config['APP_SECRET'], algorithms=["HS256"])
     # DO WHATEVER YOU WANT WITH THE DECODED TOKEN
     print('dec jwt:', decoded)
