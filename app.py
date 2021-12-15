@@ -167,13 +167,13 @@ def signin():
                       "ok": True,
                       "message": "You have signed in successfully!",
                       "data": {
-                        "user_id": session['user_id'],
+                        "user_id": user_public_id,
                       },
                       "access_token": token
                     }),
                     200,
                   )
-                  res.set_cookie("access_token", token)
+                  # res.set_cookie("access_token", token)
                   return res
               else:
                   flash('Invalid usernasme or password', 'warning')
@@ -251,7 +251,7 @@ def signup():
                 }),
                 201
               )
-              res.set_cookie("access_token", token)
+              # res.set_cookie("access_token", token)
 
               return res
       elif request.method == 'GET':
